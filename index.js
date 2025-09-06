@@ -41,8 +41,12 @@ function createConfigPanel(guild) {
     adminRoles = roleNames.length > 0 ? roleNames.join(", ") : "Not Set"
   }
 
-  const verifyRole = config.verificationRoleId
-    ? guild.roles.cache.get(config.verificationRoleId)?.name || "Not Set"
+  const unverifiedRole = config.unverifiedRoleId
+    ? guild.roles.cache.get(config.unverifiedRoleId)?.name || "Not Set"
+    : "Not Set"
+
+  const verifiedRole = config.verifiedRoleId
+    ? guild.roles.cache.get(config.verifiedRoleId)?.name || "Not Set"
     : "Not Set"
 
   const embed = new EmbedBuilder()
@@ -51,7 +55,8 @@ function createConfigPanel(guild) {
     .addFields(
       { name: "👑 Admin Roles", value: adminRoles, inline: true },
       { name: "🔐 Verification Password", value: config.verificationPassword ? "Set" : "Not Set", inline: true },
-      { name: "🎭 Unverified Role", value: verifyRole, inline: true },
+      { name: "🎭 Unverified Role", value: unverifiedRole, inline: true },
+      { name: "✅ Verified Role", value: verifiedRole, inline: true },
       { name: "📝 Embed Title", value: config.embedTitle || "Not Set", inline: true },
       {
         name: "📄 Embed Description",
@@ -76,8 +81,14 @@ function createConfigPanel(guild) {
       {
         label: "Unverified Role",
         description: "Set the role to be removed after verification",
-        value: "role",
+        value: "unverified_role",
         emoji: "🎭",
+      },
+      {
+        label: "Verified Role",
+        description: "Set the role to be added after verification",
+        value: "verified_role",
+        emoji: "✅",
       },
       {
         label: "Embed Settings",
@@ -185,11 +196,22 @@ client.on("interactionCreate", async (interaction) => {
           )
           break
 
-        case "role":
+        case "unverified_role":
           inputs.push(
             new TextInputBuilder()
               .setCustomId("verify_role_id")
-              .setLabel("Verification Role ID")
+              .setLabel("Unverified Role ID")
+              .setPlaceholder("Enter the role ID or mention the role")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true),
+          )
+          break
+
+        case "verified_role":
+          inputs.push(
+            new TextInputBuilder()
+              .setCustomId("verified_role_id")
+              .setLabel("Verified Role ID")
               .setPlaceholder("Enter the role ID or mention the role")
               .setStyle(TextInputStyle.Short)
               .setRequired(true),
@@ -267,7 +289,7 @@ client.on("interactionCreate", async (interaction) => {
       const password = interaction.fields.getTextInputValue("password_input")
 
       if (password === config.verificationPassword) {
-        if (!config.verificationRoleId) {
+        if (!config.unverifiedRoleId) {
           return interaction.reply({
             content: "Verification role not configured. Please contact an administrator.",
             flags: [MessageFlags.Ephemeral],
@@ -275,21 +297,29 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         try {
-          const role = interaction.guild.roles.cache.get(config.verificationRoleId)
-          if (!role) {
+          const unverifiedRole = interaction.guild.roles.cache.get(config.unverifiedRoleId)
+          if (!unverifiedRole) {
             return interaction.reply({
-              content: "Verification role not found. Please contact an administrator.",
+              content: "Unverified role not found. Please contact an administrator.",
               flags: [MessageFlags.Ephemeral],
             })
           }
 
-          await interaction.member.roles.remove(role)
+          await interaction.member.roles.remove(unverifiedRole)
+
+          if (config.verifiedRoleId) {
+            const verifiedRole = interaction.guild.roles.cache.get(config.verifiedRoleId)
+            if (verifiedRole) {
+              await interaction.member.roles.add(verifiedRole)
+            }
+          }
+
           await interaction.reply({
             content: "Verification successful! You now have access to the server.",
             flags: [MessageFlags.Ephemeral],
           })
         } catch (error) {
-          console.error("Error removing role:", error)
+          console.error("Error managing roles:", error)
           await interaction.reply({
             content: "An error occurred while verifying. Please contact an administrator.",
             flags: [MessageFlags.Ephemeral],
@@ -375,7 +405,7 @@ client.on("interactionCreate", async (interaction) => {
             })
             break
 
-          case "role":
+          case "unverified_role":
             const verifyRoleInput = interaction.fields.getTextInputValue("verify_role_id")
             const verifyRoleId = verifyRoleInput.replace(/[<@&>]/g, "")
             const verifyRole = interaction.guild.roles.cache.get(verifyRoleId)
@@ -385,10 +415,28 @@ client.on("interactionCreate", async (interaction) => {
                 flags: [MessageFlags.Ephemeral],
               })
             }
-            config.verificationRoleId = verifyRoleId
+            config.unverifiedRoleId = verifyRoleId
             saveConfig()
             await interaction.reply({
-              content: `Verification role set to ${verifyRole.name}`,
+              content: `Unverified role set to ${verifyRole.name}`,
+              flags: [MessageFlags.Ephemeral],
+            })
+            break
+
+          case "verified_role":
+            const verifiedRoleInput = interaction.fields.getTextInputValue("verified_role_id")
+            const verifiedRoleId = verifiedRoleInput.replace(/[<@&>]/g, "")
+            const verifiedRole = interaction.guild.roles.cache.get(verifiedRoleId)
+            if (!verifiedRole) {
+              return interaction.reply({
+                content: "Invalid role ID or role not found.",
+                flags: [MessageFlags.Ephemeral],
+              })
+            }
+            config.verifiedRoleId = verifiedRoleId
+            saveConfig()
+            await interaction.reply({
+              content: `Verified role set to ${verifiedRole.name}`,
               flags: [MessageFlags.Ephemeral],
             })
             break

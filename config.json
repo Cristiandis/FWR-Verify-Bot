@@ -1,7 +1,8 @@
 {
   "adminRoleIds": [],
   "verificationPassword": "defaultpassword",
-  "verificationRoleId": null,
+  "unverifiedRoleId": null,
+  "verifiedRoleId": null,
   "embedTitle": "Server Verification",
   "embedDescription": "Click the button below to verify yourself in this server.",
   "embedColor": "#00ff00",
