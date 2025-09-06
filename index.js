@@ -51,7 +51,7 @@ function createConfigPanel(guild) {
     .addFields(
       { name: "👑 Admin Roles", value: adminRoles, inline: true },
       { name: "🔐 Verification Password", value: config.verificationPassword ? "Set" : "Not Set", inline: true },
-      { name: "🎭 Verification Role", value: verifyRole, inline: true },
+      { name: "🎭 Unverified Role", value: verifyRole, inline: true },
       { name: "📝 Embed Title", value: config.embedTitle || "Not Set", inline: true },
       {
         name: "📄 Embed Description",
@@ -73,7 +73,12 @@ function createConfigPanel(guild) {
     .addOptions([
       { label: "Admin Roles", description: "Manage admin roles", value: "adminrole", emoji: "👑" },
       { label: "Verification Password", description: "Set the verification password", value: "password", emoji: "🔐" },
-      { label: "Verification Role", description: "Set the role given after verification", value: "role", emoji: "🎭" },
+      {
+        label: "Unverified Role",
+        description: "Set the role to be removed after verification",
+        value: "role",
+        emoji: "🎭",
+      },
       {
         label: "Embed Settings",
         description: "Configure embed title, description, and color",
@@ -278,13 +283,13 @@ client.on("interactionCreate", async (interaction) => {
             })
           }
 
-          await interaction.member.roles.add(role)
+          await interaction.member.roles.remove(role)
           await interaction.reply({
-            content: "Verification successful! You have been given access to the server.",
+            content: "Verification successful! You now have access to the server.",
             flags: [MessageFlags.Ephemeral],
           })
         } catch (error) {
-          console.error("Error adding role:", error)
+          console.error("Error removing role:", error)
           await interaction.reply({
             content: "An error occurred while verifying. Please contact an administrator.",
             flags: [MessageFlags.Ephemeral],
