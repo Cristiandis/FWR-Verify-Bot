@@ -14,6 +14,7 @@ const {
   MessageFlags,
 } = require("discord.js")
 const fs = require("fs")
+const StickyMessageManager = require("./modules/stickyMessage")
 require("dotenv").config()
 
 const client = new Client({
@@ -21,6 +22,7 @@ const client = new Client({
 })
 
 const config = JSON.parse(fs.readFileSync("./config.json", "utf8"))
+const stickyManager = new StickyMessageManager(client)
 
 function saveConfig() {
   fs.writeFileSync("./config.json", JSON.stringify(config, null, 2))
@@ -69,6 +71,7 @@ function createConfigPanel(guild) {
       },
       { name: "🎨 Embed Color", value: config.embedColor || "#0099ff", inline: true },
       { name: "🔘 Button Text", value: config.buttonText || "Not Set", inline: true },
+      { name: "📌 Sticky Message", value: config.stickyMessage?.enabled ? "Enabled" : "Disabled", inline: true },
     )
     .setColor(config.embedColor || "#0099ff")
 
@@ -97,6 +100,7 @@ function createConfigPanel(guild) {
         emoji: "📝",
       },
       { label: "Button Text", description: "Set the verification button text", value: "button", emoji: "🔘" },
+      { label: "Sticky Message", description: "Toggle sticky message mode", value: "sticky", emoji: "📌" },
     ])
 
   const row = new ActionRowBuilder().addComponents(selectMenu)
@@ -117,6 +121,10 @@ client.once("clientReady", async () => {
   } catch (error) {
     console.error("Error registering commands:", error)
   }
+})
+
+client.on("messageCreate", async (message) => {
+  await stickyManager.handleMessage(message)
 })
 
 client.on("interactionCreate", async (interaction) => {
@@ -143,25 +151,64 @@ client.on("interactionCreate", async (interaction) => {
         })
       }
 
-      const embed = new EmbedBuilder()
-        .setTitle(config.embedTitle)
-        .setDescription(config.embedDescription)
-        .setColor(config.embedColor)
+      if (config.stickyMessage?.enabled) {
+        await stickyManager.setupStickyMessage(interaction.channel)
+        await interaction.reply({
+          content: "Verification system setup with sticky message enabled!",
+          flags: [MessageFlags.Ephemeral],
+        })
+      } else {
+        const embed = new EmbedBuilder()
+          .setTitle(config.embedTitle)
+          .setDescription(config.embedDescription)
+          .setColor(config.embedColor)
 
-      const button = new ButtonBuilder()
-        .setCustomId("verify_button")
-        .setLabel(config.buttonText)
-        .setStyle(ButtonStyle.Primary)
+        const button = new ButtonBuilder()
+          .setCustomId("verify_button")
+          .setLabel(config.buttonText)
+          .setStyle(ButtonStyle.Primary)
 
-      const row = new ActionRowBuilder().addComponents(button)
+        const row = new ActionRowBuilder().addComponents(button)
 
-      await interaction.reply({ embeds: [embed], components: [row] })
+        await interaction.reply({ embeds: [embed], components: [row] })
+      }
     }
   }
 
   if (interaction.isStringSelectMenu()) {
     if (interaction.customId === "config_select") {
       const selectedValue = interaction.values[0]
+
+      if (selectedValue === "sticky") {
+        const currentState = config.stickyMessage?.enabled || false
+        const newState = !currentState
+
+        if (newState) {
+          if (!config.stickyMessage) {
+            config.stickyMessage = { enabled: false, channelId: null, messageId: null }
+          }
+          config.stickyMessage.enabled = true
+          saveConfig()
+          await interaction.reply({
+            content: "Sticky message enabled. Use /setup to activate it in a channel.",
+            flags: [MessageFlags.Ephemeral],
+          })
+        } else {
+          if (!config.stickyMessage) {
+            config.stickyMessage = { enabled: false, channelId: null, messageId: null }
+          }
+          config.stickyMessage.enabled = false
+          config.stickyMessage.channelId = null
+          config.stickyMessage.messageId = null
+          saveConfig()
+          stickyManager.disableStickyMessage()
+          await interaction.reply({
+            content: "Sticky message disabled.",
+            flags: [MessageFlags.Ephemeral],
+          })
+        }
+        return
+      }
 
       const modal = new ModalBuilder().setCustomId(`config_modal_${selectedValue}`).setTitle("Configuration")
 
