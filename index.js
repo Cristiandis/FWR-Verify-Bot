@@ -15,6 +15,7 @@ const {
 } = require("discord.js")
 const fs = require("fs")
 const StickyMessageManager = require("./modules/stickyMessage")
+const ModuleManager = require("./moduleManager.js")
 require("dotenv").config()
 
 const client = new Client({
@@ -23,6 +24,8 @@ const client = new Client({
 
 const config = JSON.parse(fs.readFileSync("./config.json", "utf8"))
 const stickyManager = new StickyMessageManager(client)
+const moduleManager = new ModuleManager(client)
+moduleManager.loadModulesFromDirectory("./modules")
 
 function saveConfig() {
   fs.writeFileSync("./config.json", JSON.stringify(config, null, 2))
@@ -121,6 +124,8 @@ client.once("clientReady", async () => {
   } catch (error) {
     console.error("Error registering commands:", error)
   }
+
+  moduleManager.startupModules();
 })
 
 client.on("messageCreate", async (message) => {
