@@ -131,6 +131,14 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.isChatInputCommand()) {
     const { commandName } = interaction
 
+client.on('GuildMemberAdd', member => {
+  setTimeout(() => {
+    if(!member.roles.cache.has(unverifiedRole)){
+      member.roles.add(unverifiedRole).catch(console.error())
+    }
+  }, 5000)
+});
+
     if (commandName === "config") {
       if (!hasAdminPermission(interaction.member)) {
         return interaction.reply({
