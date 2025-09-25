@@ -134,7 +134,7 @@ client.on("interactionCreate", async (interaction) => {
 client.on('GuildMemberAdd', member => {
   setTimeout(() => {
     if(!member.roles.cache.has(unverifiedRole)){
-      member.roles.add(unverifiedRole).catch(console.error())
+      member.roles.add(unverifiedRole).catch(console.error)
     }
   }, 5000)
 });
