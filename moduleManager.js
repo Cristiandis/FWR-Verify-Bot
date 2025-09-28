@@ -33,8 +33,8 @@ class ModuleManager {
   }
 
   // remove a module
-  removeModule(moduleName) {
-    const module = this.modules.get(moduleName);
+  removeModule(name) {
+    const module = this.modules.get(name);
     if (module) {
       try {
         module?.disable();
@@ -45,9 +45,9 @@ class ModuleManager {
           error
         );
       }
-      this.modules.delete(moduleName);
+      this.modules.delete(name);
     } else {
-      console.warn(`Module ${moduleName} not found.`);
+      console.warn(`Module ${name} not found.`);
     }
   }
 
@@ -65,7 +65,9 @@ class ModuleManager {
   startupModules() {
     for (const [name, module] of this.modules) {
       try {
-        module?.enabled();
+        if (this.moduleEnabled(name)) {
+          this.startModule(name);
+        }
       } catch (error) {
         console.error(
           "error while trying to enable module: %s\n%s",
@@ -74,6 +76,15 @@ class ModuleManager {
         );
       }
     }
+  }
+
+  moduleEnabled(name) {
+    return this.config?.modules[name]?.enabled;
+  }
+
+  startModule(name) {
+    const module = this.modules.get(name);
+    module?.enabled();
   }
 }
 
